@@ -1,0 +1,12 @@
+include README.md
+include LICENSE
+include pyproject.toml
+include poetry.lock
+recursive-include docs *
+recursive-include examples *
+recursive-include tests *
+recursive-include argchain *.py
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store
+

@@ -1,14 +1,46 @@
 [project]
 name = "argchain"
 version = "0.1.0"
-description = ""
+description = "A lightweight Python library for composing operations that pass data through a pipeline, enabling elegant functional data flow."
+readme = "README.md"
+requires-python = "^3.10"
+license = {text = "MIT"}
 authors = [
-    {name = "Laszlo Varga",email = "varga.laszlo.gabor@gmail.com"}
+    {name = "Laszlo Varga", email = "varga.laszlo.gabor@gmail.com"}
 ]
-requires-python = "^3.14"
-dependencies = [
+keywords = [
+    "pipeline",
+    "functional",
+    "data-flow",
+    "operations",
+    "composition",
+    "chaining",
+    "kwargs"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed"
 ]
 
+[project.urls]
+Homepage = "https://github.com/vargalg/argchain"
+Documentation = "https://github.com/vargalg/argchain#readme"
+Repository = "https://github.com/vargalg/argchain.git"
+Issues = "https://github.com/vargalg/argchain/issues"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
