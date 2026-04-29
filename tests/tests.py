@@ -210,6 +210,95 @@ class TestOperationDecorator:
         assert result['metadata'] == "test"
 
 
+class TestOperationMetadata:
+    """Tests for the Operation wrapper metadata methods."""
+
+    def test_operation_expects_method(self):
+        """Test the expects() method for setting and getting expected inputs."""
+        @operation()
+        def my_op(value: int, **kwargs):
+            return {**kwargs, 'value': value * 2}
+
+        # Initially empty
+        assert my_op.expects() == []
+
+        # Set expected inputs
+        my_op.expects(['value', 'factor'])
+        assert my_op.expects() == ['value', 'factor']
+
+        # Method chaining
+        result = my_op.expects(['value']).expects()
+        assert result == ['value']
+
+    def test_operation_returns_method(self):
+        """Test the returns() method for setting and getting expected outputs."""
+        @operation()
+        def my_op(value: int, **kwargs):
+            return {**kwargs, 'value': value * 2}
+
+        # Initially empty
+        assert my_op.returns() == []
+
+        # Set expected outputs
+        my_op.returns(['value', 'metadata'])
+        assert my_op.returns() == ['value', 'metadata']
+
+        # Method chaining
+        result = my_op.returns(['value']).returns()
+        assert result == ['value']
+
+    def test_operation_metadata_in_decorator(self):
+        """Test setting metadata directly in the decorator."""
+        @operation(expects=['value'], returns=['value', 'doubled'])
+        def double(value: int):
+            return {'value': value * 2, 'doubled': True}
+
+        assert double.expects() == ['value']
+        assert double.returns() == ['value', 'doubled']
+
+        # Function still works
+        result = double(value=5)
+        assert result == {'value': 10, 'doubled': True}
+
+    def test_operation_repr(self):
+        """Test string representation of Operation objects."""
+        @operation(expects=['input'], returns=['output'])
+        def my_op(**kwargs):
+            return {'output': 'result'}
+
+        repr_str = repr(my_op)
+        assert 'my_op' in repr_str
+        assert 'expects=[' in repr_str
+        assert 'returns=[' in repr_str
+
+    def test_operation_callable(self):
+        """Test that Operation objects are still callable like functions."""
+        @operation()
+        def add(value: int, **kwargs):
+            return {**kwargs, 'value': value + 1}
+
+        # Should work like a regular function
+        result = add(value=5, metadata="test")
+        assert result == {'value': 6, 'metadata': 'test'}
+
+        # Should have function attributes
+        assert add.__name__ == 'add'
+        assert callable(add)
+
+    def test_operation_metadata_with_passthrough(self):
+        """Test metadata methods work with passthrough operations."""
+        @operation(passthrough=True, expects=['count'], returns=['count'])
+        def increment(count: int):
+            return {'count': count + 1}
+
+        assert increment.expects() == ['count']
+        assert increment.returns() == ['count']
+
+        # Test functionality
+        result = increment(count=5, other="data")
+        assert result == {'count': 6, 'other': 'data'}
+
+
 class TestIntegration:
     """Integration tests combining multiple features."""
 
