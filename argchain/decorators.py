@@ -3,7 +3,7 @@ Decorators to help create operations for the pipeline.
 """
 
 from typing import Callable, Dict, Any, List, Optional, Union
-from functools import wraps
+import inspect
 
 
 class Operation:
@@ -11,14 +11,24 @@ class Operation:
     A callable wrapper for pipeline operations that provides metadata methods.
     
     This class wraps a decorated function and makes it callable while adding
-    methods to document expected inputs and returned keys.
+    methods to document expected inputs and returned keys. All execution logic
+    (passthrough, deletion, validation) is encapsulated within this class.
     """
     
-    def __init__(self, func: Callable, expected_inputs: Optional[List[str]] = None, expected_outputs: Optional[List[str]] = None):
+    def __init__(
+        self,
+        func: Callable,
+        delete: Optional[List[str]] = None,
+        passthrough: bool = True,
+        expected_inputs: Optional[List[str]] = None,
+        expected_outputs: Optional[List[str]] = None
+    ):
         self._func = func
+        self._delete = delete or []
+        self._passthrough = passthrough
         self._expected_inputs = expected_inputs or []
         self._expected_outputs = expected_outputs or []
-        # Copy over function attributes for @wraps compatibility
+        # Copy over function attributes for introspection
         self.__name__ = getattr(func, '__name__', '<operation>')
         self.__doc__ = getattr(func, '__doc__', '')
         self.__module__ = getattr(func, '__module__', '')
@@ -26,10 +36,59 @@ class Operation:
         self.__annotations__ = getattr(func, '__annotations__', {})
     
     def __call__(self, *args, **kwargs) -> Dict[str, Any]:
-        """Make the operation callable like the original function."""
-        return self._func(*args, **kwargs)
-    
-    def expects(self, inputs: Optional[List[str]] = None) -> 'Operation':
+        """
+        Execute the operation with passthrough, deletion, and validation logic.
+
+        Returns:
+            A dictionary containing the operation's output and any passed-through keys.
+
+        Raises:
+            TypeError: If the operation doesn't return a dictionary.
+        """
+        remaining = {}  # Initialize to avoid linter warning
+
+        if self._passthrough:
+            # Auto pass-through mode: extract only parameters the function actually uses
+            sig = inspect.signature(self._func)
+            # Get parameter names (excluding **kwargs if present)
+            param_names = set()
+            for param_name, param in sig.parameters.items():
+                if param.kind not in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+                    param_names.add(param_name)
+
+            # Extract handled parameters
+            handled = {}
+            remaining = kwargs.copy()
+            for param_name in param_names:
+                if param_name in remaining:
+                    handled[param_name] = remaining.pop(param_name)
+
+            # Call function with only the parameters it handles
+            result = self._func(**handled)
+
+        else:
+            # Manual mode: pass all kwargs to function
+            result = self._func(**kwargs)
+
+        # Validate return type
+        if not isinstance(result, dict):
+            raise TypeError(
+                f"Operation {self.__name__} must return a dict, "
+                f"but returned {type(result).__name__}"
+            )
+
+        # Handle deletions
+        if self._delete:
+            for key in self._delete:
+                result.pop(key, None)
+
+        # Auto pass-through remaining kwargs into result
+        if self._passthrough:
+            result = {**remaining, **result}
+
+        return result
+
+    def expects(self, inputs: Optional[List[str]] = None) -> Union['Operation', List[str]]:
         """
         Set or get the expected input keys for this operation.
         
@@ -88,84 +147,45 @@ def operation(
         expects: List of expected input key names (for documentation)
         returns: List of expected output key names (for documentation)
 
+    Returns:
+        A decorator function that wraps the target function in an Operation.
+
     Examples:
         # Basic operation with manual pass-through
-        @operation()
+        @operation(passthrough=False)
         def multiply(value: int, factor: int = 2, **kwargs) -> Dict[str, Any]:
             return {**kwargs, 'value': value * factor}
 
         # Delete specific keys from output
         @operation(delete=['temp_data'])
-        def process(value: int, temp_data: str = "", **kwargs) -> Dict[str, Any]:
-            return {**kwargs, 'value': value * 2}
+        def process(value: int, temp_data: str = "") -> Dict[str, Any]:
+            return {'value': value * 2}
 
-        # Auto pass-through everything except handled parameters
-        @operation(passthrough=True)
+        # Auto pass-through everything except handled parameters (default)
+        @operation()
         def add_one(value: int) -> Dict[str, Any]:
             return {'value': value + 1}
             
         # With metadata documentation
-        @operation(passthrough=True, expects=['value'], returns=['value'])
+        @operation(expects=['value'], returns=['value', 'result'])
         def double(value: int) -> Dict[str, Any]:
-            return {'value': value * 2}
-            
+            return {'value': value * 2, 'result': value * 2}
+
         # Or set metadata after decoration
-        @operation(passthrough=True)
+        @operation()
         def triple(value: int) -> Dict[str, Any]:
             return {'value': value * 3}
         
         triple.expects(['value']).returns(['value'])
     """
     def decorator(func: Callable) -> Operation:
-        @wraps(func)
-        def wrapper(**kwargs) -> Dict[str, Any]:
-            remaining = {}  # Initialize to avoid linter warning
-
-            if passthrough:
-                # Auto pass-through mode: extract parameters the function actually uses
-                import inspect
-                sig = inspect.signature(func)
-                # Get parameter names (excluding **kwargs if present)
-                param_names = set()
-                for param_name, param in sig.parameters.items():
-                    if param.kind not in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
-                        param_names.add(param_name)
-
-                # Extract handled parameters
-                handled = {}
-                remaining = kwargs.copy()
-                for param_name in param_names:
-                    if param_name in remaining:
-                        handled[param_name] = remaining.pop(param_name)
-
-                # Call function with only the parameters it handles
-                result = func(**handled)
-
-            else:
-                # Manual mode: pass all kwargs to function
-                result = func(**kwargs)
-
-            # Validate return type
-            if not isinstance(result, dict):
-                raise TypeError(
-                    f"Operation {func.__name__} must return a dict, "
-                    f"but returned {type(result).__name__}"
-                )
-
-            # Handle deletions
-            if delete:
-                for key in delete:
-                    result.pop(key, None)
-
-            # Auto pass-through for passthrough mode
-            if passthrough:
-                # Merge remaining kwargs into result
-                result = {**remaining, **result}
-
-            return result
-
-        # Return Operation wrapper with metadata
-        return Operation(wrapper, expected_inputs=expects, expected_outputs=returns)
+        return Operation(
+            func,
+            delete=delete,
+            passthrough=passthrough,
+            expected_inputs=expects,
+            expected_outputs=returns
+        )
 
     return decorator
 
