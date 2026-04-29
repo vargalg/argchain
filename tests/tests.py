@@ -11,7 +11,7 @@ class TestPipeline:
 
     def test_single_operation(self):
         """Test pipeline with a single operation."""
-        @operation()
+        @operation(passthrough=False)
         def add_value(**kwargs):
             return {**kwargs, 'result': kwargs.get('value', 0) + 1}
 
@@ -62,7 +62,7 @@ class TestPipeline:
 
     def test_callable_syntax(self):
         """Test that pipeline can be called directly."""
-        @operation()
+        @operation(passthrough=False)
         def double(**kwargs):
             return {**kwargs, 'value': kwargs.get('value', 0) * 2}
 
@@ -124,7 +124,7 @@ class TestOperationDecorator:
 
     def test_operation_basic(self):
         """Test basic operation decorator."""
-        @operation()
+        @operation(passthrough=False)
         def simple(**kwargs):
             return {'result': 'success'}
 

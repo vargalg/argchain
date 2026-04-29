@@ -70,7 +70,7 @@ class Operation:
 
 def operation(
     delete: Optional[List[str]] = None,
-    passthrough: bool = False,
+    passthrough: bool = True,
     expects: Optional[List[str]] = None,
     returns: Optional[List[str]] = None
 ) -> Callable:
