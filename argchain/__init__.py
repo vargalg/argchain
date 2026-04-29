@@ -6,9 +6,8 @@ where each operation receives a dictionary of keyword arguments and
 produces a dictionary as output for the next operation in the chain.
 """
 
-from .pipeline import Pipeline
+from .pipeline import Pipeline, CallGraph
 from .decorators import operation
 
 __version__ = "0.1.0"
-__all__ = ["Pipeline", "operation"]
-
+__all__ = ["Pipeline", "CallGraph", "operation"]
