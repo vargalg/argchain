@@ -48,9 +48,9 @@ class TestPipeline:
 
     def test_selective_deletion(self):
         """Test that operations can selectively delete keys."""
-        @operation()
+        @operation(delete=['secret'])
         def filter_keys(value: int, secret: str = "", **kwargs):
-            # secret is intentionally not included in output
+            # secret will be deleted by the decorator
             return {**kwargs, 'value': value}
 
         pipeline = Pipeline().pipe(filter_keys)
@@ -129,7 +129,7 @@ class TestOperationDecorator:
             return {'result': 'success'}
 
         result = simple(value=1)
-        assert result == {'result': 'success'}
+        assert result == {'value': 1, 'result': 'success'}
 
     def test_operation_type_checking(self):
         """Test that operation decorator validates return type."""

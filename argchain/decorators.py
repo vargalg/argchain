@@ -45,8 +45,6 @@ class Operation:
         Raises:
             TypeError: If the operation doesn't return a dictionary.
         """
-        remaining = {}  # Initialize to avoid linter warning
-
         if self._passthrough:
             # Auto pass-through mode: extract only parameters the function actually uses
             sig = inspect.signature(self._func)
@@ -58,10 +56,9 @@ class Operation:
 
             # Extract handled parameters
             handled = {}
-            remaining = kwargs.copy()
             for param_name in param_names:
-                if param_name in remaining:
-                    handled[param_name] = remaining.pop(param_name)
+                if param_name in kwargs:
+                    handled[param_name] = kwargs[param_name]
 
             # Call function with only the parameters it handles
             result = self._func(**handled)
@@ -77,16 +74,15 @@ class Operation:
                 f"but returned {type(result).__name__}"
             )
 
-        # Handle deletions
+        # Return all input kwargs, with function output taking precedence for overlapping keys
+        final_result = {**kwargs, **result}
+
+        # Handle deletions after merging
         if self._delete:
             for key in self._delete:
-                result.pop(key, None)
+                final_result.pop(key, None)
 
-        # Auto pass-through remaining kwargs into result
-        if self._passthrough:
-            result = {**remaining, **result}
-
-        return result
+        return final_result
 
     def expects(self, inputs: Optional[List[str]] = None) -> Union['Operation', List[str]]:
         """
